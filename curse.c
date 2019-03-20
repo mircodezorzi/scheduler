@@ -113,6 +113,8 @@ void menu_draw(Menu m){
     int pad = 10;
     int cl = 1;
 
+    m.x = (term_w - m.w) / 2;
+
     draw_border(m.x, m.y, m.w, m.h);
 
     cursorto(m.x + pad / 2 - strlen(m.title) / 2 - 2, m.y);

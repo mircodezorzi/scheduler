@@ -8,6 +8,9 @@
 #include "utils.h"
 
 Process menu_process_new(){
+
+    int w = 40;
+
     Process p;
     p.priority = 0;
     p.t_arrival = 0;
@@ -18,7 +21,7 @@ Process menu_process_new(){
         ENTRY("Arrival",  Integer, &p.t_arrival),
         ENTRY("Duration", Integer, &p.t_duration),
     };
-    Menu menu = menu_new(entries, SIZE(entries), "tmp", 5, 15, 30, 6);
+    Menu menu = menu_new(entries, SIZE(entries), "tmp", -1, 15, w, 6);
     menu_input(&menu);
     return p;
 }
@@ -35,18 +38,20 @@ int main(){
         { .name = "p5", .t_arrival = 60,  .t_duration =  5, .pid = 5 },
     };
 
-    draw_process_graph(schedule, 5, 0, 0, 50, 12);
     draw_line(30, 30, 10, 1, 1);
     draw_line(31, 30, 10, 1, 0);
     draw_line(30, 29, 10, 0, 1);
     draw_line(30, 28, 10, 0, 0);
 
     while(1) {
+
+        draw_process_graph(schedule, SIZE(schedule), 0, 0, term_w, 12);
+
         switch(getchar()) {
             case 'a':
                 menu_process_new();
                 break;
-            default:
+            case CTRLMASK('C'):
                 endwin();
                 return 0;
         }
