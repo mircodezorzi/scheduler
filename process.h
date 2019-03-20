@@ -3,10 +3,10 @@
 
 typedef struct Process Process;
 struct Process {
-    char name[50];
+    char name[128];
     int pid;
 
-    Process *parent;
+    Process* parent;
 
     int priority;
     enum { Launched, Acquiring,

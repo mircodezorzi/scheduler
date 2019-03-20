@@ -1,7 +1,7 @@
 CC := clang
 CFLAGS := -std=c99 -pedantic
 
-HDRS := config.h
+HDRS :=
 SRCS := main.c curse.c utils.c process.c #schedule.c queue.c process.c utils.c
 
 OBJS := $(SRCS:.c=.o)
