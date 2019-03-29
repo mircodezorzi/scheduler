@@ -6,6 +6,14 @@
 #include "process.h"
 #include "utils.h"
 
+void clear(int x, int y, int h, int w){
+    for(int i = 0; i < h; i++) {
+        cursorto(x, y + i);
+        printf("%*s", w, "");
+        for(int j = 0; j < w; j++) putchar(' ');
+    }
+}
+
 void draw_border(int x, int y, int w, int h){
     cursorto(x, y);
     printf("\u250C");
@@ -26,7 +34,9 @@ void draw_border(int x, int y, int w, int h){
 }
 
 /**
- * Draw line in x, y position of n length
+ * Draw line of x, y position and n length
+ * @param int d if 0 draw an horizzontal line, else a vertical one
+ * @param int e if 1 draw special character at the ends of the line
  */
 void draw_line(int x, int y, int n, int d, int e){
     cursorto(x, y);
@@ -43,9 +53,40 @@ void draw_line(int x, int y, int n, int d, int e){
 }
 
 /**
- * Draw a bar graph based on the PID of a process.
+ * @param int c block color
+ * @param int s if 1 draw a shadow arround the block
  */
-void draw_process_graph(Process *p, int n, int x, int y, int w, int h){
+void draw_block(int x, int y, int w, int h, int c, int s){
+    printf("\033[38;5;%dm", c);
+    for(int i = 0; i < h; i++) {
+        cursorto(x, y + i);
+        for(int j = 0; j < w; j++) {
+            printf("\u2588");
+        }
+    }
+    printf("\033[38;5;255m");
+    if(s) {
+        cursorto(x + 1, y + h);
+        for(int i = 0; i < w; i++)
+            printf("\u2591");
+        for(int i = 0; i < h; i++) {
+            cursorto(x + w, y + i + 1);
+            printf("\u2591");
+        }
+    }
+}
+
+/**
+ * Draw a bar graph based on the PID of a process.
+ * Bar color is based on the name of the process.
+ */
+void draw_process_graph(Process *p, int n, int x, int y, int w, int h, int bw){
+
+    char block[8][4] = {
+        "\u2581", "\u2582", "\u2583", "\u2584",
+        "\u2585", "\u2586", "\u2587", "\u2588"
+    };
+
     int lower = p[0].pid;
     int upper = p[0].pid;
     for(int i = 0; i < n; i++) {
@@ -53,16 +94,21 @@ void draw_process_graph(Process *p, int n, int x, int y, int w, int h){
         if(p[i].pid < upper) upper = p[i].pid;
     }
 
+    float range = (((float)(upper) / (float)(lower)) * (h - 2));
+
     draw_border(x, y, w, h);
     for(int i = 0; i < n; i++) {
         printf("\033[38;5;%dm", colorhash(p[i].name, strlen(p[i].name)));
-        for(int j = 0;
-            j < p[i].pid * (((float)(upper) / (float)(lower)) * (h - 2));
-            j++) {
-            cursorto(x + i + 1, y + h - 2 - j);
-            printf("\u2588");
+        for(int k = 0; k < bw; k++) {
+            for(int j = 0; j < p[i].pid * range; j++) {
+                if(k + i * bw + 1 > w - 2) goto close;
+                cursorto(x + k + i * bw + 1, y + h - 2 - j);
+                printf("%s", block[7]);
+            }
         }
     }
+
+    close:
     printf("\033[38;5;255m");
     draw_process_graph_info(p, n, x, y + h + 1, w, h);
 }
@@ -71,9 +117,8 @@ void draw_process_graph_info(Process *p, int n, int x, int y, int w, int h){
     cursorto(x, y);
     for(int i = 0; i < n; i++) {
         printf("\033[38;5;%dm", colorhash(p[i].name, strlen(p[i].name)));
-        printf(" \u2588 %s", p[i].name);
+        printf(" \u2588 \033[38;5;255m %s", p[i].name);
     }
-    printf("\033[38;5;255m");
 }
 
 Menu menu_new(Entry* entries, int nentries, char* title, int x, int y, int w, int h){
@@ -117,7 +162,8 @@ void menu_draw(Menu m){
 
     draw_border(m.x, m.y, m.w, m.h);
 
-    cursorto(m.x + pad / 2 - strlen(m.title) / 2 - 2, m.y);
+    //cursorto(m.x + pad / 2 - strlen(m.title) / 2 - 2, m.y);
+    cursorto(m.x + m.w / 2 - strlen(m.title) / 2 - 2, m.y);
     printf("\u2524 %s \u251C", m.title);
 
     for(int i = m.scrolled; i < m.scrolled + m.h - 2; i++) {
@@ -141,6 +187,8 @@ void menu_draw(Menu m){
 
     draw_line(m.x + pad, m.y, m.h, 1, 1);
 
+    clear(0, term_h - 2, 1, term_w);
+    cursorto(1, term_h);
     CMDDEF("C-C", "exit");
     CMDDEF("Tab", "next");
 }
@@ -152,6 +200,7 @@ void menu_input(Menu* m){
         switch(key = getchar()) {
 
         case CTRLMASK('c'):
+            clear(m->x, m->y, m->h, m->w);
             return;
 
         case '\033':
@@ -200,6 +249,7 @@ void menu_input(Menu* m){
             break;
 
         default:
+            if(key < ' ' || key > '~') break;
             switch(m->entries[m->selected].type) {
             case String:
                 if(m->entries[m->selected].length > 127) break;

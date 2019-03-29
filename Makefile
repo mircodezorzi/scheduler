@@ -2,7 +2,7 @@ CC := clang
 CFLAGS := -std=c99 -pedantic
 
 HDRS :=
-SRCS := main.c curse.c utils.c process.c #schedule.c queue.c process.c utils.c
+SRCS := main.c curse.c utils.c process.c
 
 OBJS := $(SRCS:.c=.o)
 EXEC := scheduler

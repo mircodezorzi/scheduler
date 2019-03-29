@@ -4,7 +4,7 @@
 #include "process.h"
 
 #define CTRLMASK(k) ((k) & 0x1f)
-#define ENTRY(l, t, v)\
+#define NEWENTRY(l, t, v)\
     { .label = l, .type = t, .value = ((void*)(v))}
 
 typedef struct {
@@ -26,7 +26,8 @@ typedef struct {
 
 void draw_border(int x, int y, int w, int h);
 void draw_line(int x, int y, int n, int d, int e);
-void draw_process_graph(Process *p, int n, int x, int y, int w, int h);
+void draw_block(int x, int y, int w, int h, int c, int s);
+void draw_process_graph(Process *p, int n, int x, int y, int w, int h, int bw);
 void draw_process_graph_info(Process *p, int n, int x, int y, int w, int h);
 
 Menu menu_new(Entry* entries, int nentries, char* title, int x, int y, int w, int h);
