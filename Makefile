@@ -1,8 +1,8 @@
-CC := clang
+CC := gcc
 CFLAGS := -std=c99 -pedantic
 
 HDRS :=
-SRCS := main.c curse.c utils.c process.c
+SRCS := main.c curse.c utils.c process.c memory.c
 
 OBJS := $(SRCS:.c=.o)
 EXEC := scheduler

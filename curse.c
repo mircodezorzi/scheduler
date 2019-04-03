@@ -140,9 +140,7 @@ Menu menu_new(Entry* entries, int nentries, char* title, int x, int y, int w, in
 void menu_print(int w, char* str, int len){
     char format[w];
     if(len > w) {
-        putchar('.');
-        putchar('.');
-        putchar('.');
+        printf("...");
         for(int i = len - w + 2; i < len; i++)
             putchar(str[i]);
     } else {
@@ -177,8 +175,15 @@ void menu_draw(Menu m){
             menu_print(m.w - pad - 3, ((char*)m.entries[i].value), m.entries[i].length);
             break;
         case Integer:
-            sprintf(format, "%%-%d.%ds %%%d.d", pad, pad, m.w - pad - 3);
+            sprintf(format, "%%-%d.%ds %%%d.1d", pad, pad, m.w - pad - 3);
             printf(format, m.entries[i].label, *((int*)m.entries[i].value));
+            break;
+        case Boolean:
+            sprintf(format, "%%-%d.%ds%*s[%c]", pad, pad, m.w - pad - 5, "",\
+            *((int*)m.entries[i].value) ? '*' : ' ');
+            printf(format, m.entries[i].label);
+            break;
+        case Float:
             break;
         }
         if(m.selected == i)
@@ -207,10 +212,9 @@ void menu_input(Menu* m){
             getchar();
             switch(getchar()) {
             case 'A':
-
                 if(m->selected == 0) {
                     m->selected = m->nentries - 1;
-                    m->scrolled = m->nentries + 1 - m->h;
+                    m->scrolled = m->nentries + 2 - m->h;
                 } else {
                     m->selected--;
                     if(m->selected < m->scrolled + 1 && m->scrolled > 0)
@@ -229,7 +233,7 @@ void menu_input(Menu* m){
                 m->scrolled = 0;
             } else {
                 m->selected++;
-                if(m->selected > m->h - 2 && m->scrolled < m->h - 2) {
+                if(m->selected > m->h - 4 && m->scrolled < m->h) {
                     m->scrolled++;
                 }
             }
@@ -262,6 +266,13 @@ void menu_input(Menu* m){
                 if(key < '0' || key > '9') break;
                 (*((int*)m->entries[m->selected].value)) =\
                 (*((int*)m->entries[m->selected].value)) * 10 + key - 0x30;
+                break;
+            case Boolean:
+                if(key != ' ') break;
+                (*((int*)m->entries[m->selected].value)) =\
+                !(*((int*)m->entries[m->selected].value));
+                break;
+            case Float:
                 break;
             }
             break;

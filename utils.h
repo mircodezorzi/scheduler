@@ -4,6 +4,7 @@
 #define SIZE(vec) (sizeof(vec)/sizeof(vec[0]))
 
 #define CMDDEF(cmd, key) printf("\033[0;38;41m%s\033[0;38;0m %s ", cmd, key)
+#define HIGHLIGHT(msg) printf("\033[0;38;41m%s\033[0;38;0m", msg)
 
 #define cursorup(x)    printf("\033[%dA", x)
 #define cursordown(x)  printf("\033[%dB", x)

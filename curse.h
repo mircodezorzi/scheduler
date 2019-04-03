@@ -24,6 +24,7 @@ typedef struct {
     int w, h;
 } Menu;
 
+void clear(int x, int y, int h, int w);
 void draw_border(int x, int y, int w, int h);
 void draw_line(int x, int y, int n, int d, int e);
 void draw_block(int x, int y, int w, int h, int c, int s);

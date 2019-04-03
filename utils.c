@@ -1,3 +1,5 @@
+#include <fcntl.h>
+#include <linux/input.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,7 +11,7 @@
 
 #include "utils.h"
 
-void resize_handler(int sig) {
+void resize_handler(int sig){
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
     term_h = w.ws_row;
