@@ -67,9 +67,24 @@ void draw_dynamic_memory(struct DynamicMemory* m, int x, int y, int w, int h){
 int main(){
 
     struct DynamicMemory* memory = dynamicmemory_new(100);
-    //dynamicmemory_malloc(memory, 10, 1);
-    //draw_dynamic_memory(memory, 0, 0, 10, 10);
 
+    printf("Allocating 3 memory blocks\n");
+    dynamicmemory_malloc(memory, 10, 1);
+    dynamicmemory_malloc(memory, 15, 2);
+    dynamicmemory_malloc(memory, 23, 3);
+
+    for(struct Block* i = memory->block; i != NULL; i = i->next) {
+        printf("[%c] block id: %d; block address: %d; block size: %d\n", i->allocated ? '*' : ' ', i->id, i->address, i->size);
+    }
+
+    printf("freeing block at address 10\n");
+    dynamicmemory_free(memory, 10);
+
+    for(struct Block* i = memory->block; i != NULL; i = i->next) {
+        printf("[%c] block id: %d; block address: %d; block size: %d\n", i->allocated ? '*' : ' ', i->id, i->address, i->size);
+    }
+
+    return 1;
 
     initwin();
 
