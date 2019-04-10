@@ -160,8 +160,10 @@ Menu menu_new(Entry* entries, int nentries, char* title, int x, int y, int w, in
     m.entries = entries;
     for(int i = 0; i < nentries; i++) {
         m.entries[i].length = strlen(entries[i].label) + 1;
-        if(m.entries[i].type == ProcessStage)
+        if(m.entries[i].type == ProcessStage) {
             m.entries[i].count = entries[i].count;
+            m.entries[i].value = malloc(sizeof(struct Stage) * *(m.entries[i].count));
+        }
     }
     m.nentries = nentries;
     m.selected = 0;
@@ -226,17 +228,18 @@ void menu_draw(Menu* m){
             printf("\u2534");
             m->nelements = m->nentries + *m->entries[i].count;
             // TODO: this reallocates memory for the stages every redraw, really slow!!
-            struct Stage* new = realloc(((struct Stage*)m->entries[i].value), *m->entries[i].count);
-            if(new == NULL)
-                break;
-            m->entries[i].value = new;
+            //struct Stage* new = realloc(((struct Stage*)m->entries[i].value), *(m->entries[i].count));
+            //m->entries[i].value = malloc(sizeof(struct Stage) * *(m->entries[i].count));
+            //if(new == NULL)
+            //    break; // TODO: add error handling
+            //m->entries[i].value = new;
             for(int j = 0; j < *m->entries[i].count; j++) {
                 if(m->selected == i + j)
                     printf("\033[0;30;41m");
                 cursorto(m->x + 1, m->y + cl++);
                     printf("[%c] %d",
-                        (*((struct Stage*)m->entries[i].value)).type == Io ? '*' : ' ',
-                        (*((struct Stage*)m->entries[i].value)).t_length);
+                        (((struct Stage*)m->entries[i].value)[j]).type == Io ? '*' : ' ',
+                        (((struct Stage*)m->entries[i].value)[j]).t_length);
                 if(m->selected == i + j)
                     printf("\033[0;30;0m");
             }
@@ -320,7 +323,7 @@ void menu_input(Menu* m){
 
         default:
             if(key < ' ' || key > '~') break;
-            switch(m->entries[m->selected].type) {
+            switch(m->entries[MIN(m->selected, m->nentries - 1)].type) {
             case String:
                 if(m->entries[m->selected].length > 127) break;
                 *(((char*)(m->entries[m->selected].value))\
@@ -350,10 +353,13 @@ void menu_input(Menu* m){
             case Float:
                 break;
             case ProcessStage:
-                //(*((struct Stage*)(m->entries + m->selected))).t_length = 10;
-                endwin();
-                exit(0);
-                //(*(((*(struct Stage*)(m->entries + m->selected).value))).type);
+                if(key == ' ') {
+                (((struct Stage*)m->entries[MIN(m->selected, m->nentries - 1)].value)[m->selected - m->nentries + 1]).type = !(((struct Stage*)m->entries[MIN(m->selected, m->nentries - 1)].value)[m->selected - m->nentries + 1]).type;
+                cursorto(0, 0);
+                printf("%d %d\n", MIN(m->selected, m->nentries - 1), m->selected - m->nentries + 1);
+                } else if(key >= '0' && key <= '9') {
+                (((struct Stage*)m->entries[MIN(m->selected, m->nentries - 1)].value)[m->selected - m->nentries + 1]).t_length += 10;
+                }
                 break;
             }
             break;
