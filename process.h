@@ -8,15 +8,23 @@ struct Process {
 
     Process* parent;
 
+    int memory;
     int priority;
     enum { Launched, Acquiring,
            Ready,    Executing,
            Blocked,  Zombie,
            Terminated } status;
 
+    struct Stage {
+        enum { Io, Computing } type;
+        int t_length;
+    } *stages;
+    int nstages;
+
+    int t_total_length;
+
     int t_arrival;
     int t_duration;
-
     int t_ellapsed;
     int t_turnaround;
 };

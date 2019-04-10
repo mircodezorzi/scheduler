@@ -5,6 +5,7 @@
 #include "curse.h"
 #include "process.h"
 #include "utils.h"
+#include "memory.h"
 
 void clear(int x, int y, int h, int w){
     for(int i = 0; i < h; i++) {
@@ -119,6 +120,34 @@ void draw_process_graph_info(Process *p, int n, int x, int y, int w, int h){
         printf("\033[38;5;%dm", colorhash(p[i].name, strlen(p[i].name)));
         printf(" \u2588 \033[38;5;255m %s", p[i].name);
     }
+    printf("\033[38;5;255m");
+}
+
+void draw_dynamicmemory(struct DynamicMemory* m, int x, int y, int w, int h){
+    float range = (((float)(w - 2)) / ((float)(m->size)));
+    draw_border(x, y, w, h);
+    cursorto(x + 1, y + 1);
+    for(struct Block* i = m->block; i != NULL; i = i->next) {
+        printf("\033[38;5;%dm", colorhash(i->name, strlen(i->name)));
+        for(int j = 0; j < range * i->size - 1; j++) {
+            printf(i->allocated ? "\u2588" : " ");
+        }
+    }
+    printf("\033[38;5;255m");
+}
+
+void draw_process(Process p, int x, int y, int w, int h){
+    draw_border(x, y, h, w);
+    int block_size = 2;
+    p.nstages = 3;
+    int center = w + x / 2;
+    for(int i = 0; i < p.nstages; i++) {
+        draw_block(x + i * block_size + 1,
+                   p.stages[i].type == Io ? center + block_size : center - block_size,
+                   block_size,
+                   block_size,
+                   255, 0);
+    }
 }
 
 Menu menu_new(Entry* entries, int nentries, char* title, int x, int y, int w, int h){
@@ -129,8 +158,11 @@ Menu menu_new(Entry* entries, int nentries, char* title, int x, int y, int w, in
     m.h = h;
     m.title = title;
     m.entries = entries;
-    for(int i = 0; i < nentries; i++)
-        m.entries[i].length = 0;
+    for(int i = 0; i < nentries; i++) {
+        m.entries[i].length = strlen(entries[i].label) + 1;
+        if(m.entries[i].type == ProcessStage)
+            m.entries[i].count = entries[i].count;
+    }
     m.nentries = nentries;
     m.selected = 0;
     m.scrolled = 0;
@@ -151,47 +183,76 @@ void menu_print(int w, char* str, int len){
     }
 }
 
-void menu_draw(Menu m){
+void menu_draw(Menu* m){
     char format[128];
     int pad = 10;
     int cl = 1;
 
-    m.x = (term_w - m.w) / 2;
+    m->x = (term_w - m->w) / 2;
 
-    draw_border(m.x, m.y, m.w, m.h);
+    draw_border(m->x, m->y, m->w, m->h);
 
-    //cursorto(m.x + pad / 2 - strlen(m.title) / 2 - 2, m.y);
-    cursorto(m.x + m.w / 2 - strlen(m.title) / 2 - 2, m.y);
-    printf("\u2524 %s \u251C", m.title);
+    cursorto(m->x + m->w / 2 - strlen(m->title) / 2 - 2, m->y);
+    printf("\u2524 %s \u251C", m->title);
+    //draw_line(m->x + pad, m->y, m->h, 1, 1);
 
-    for(int i = m.scrolled; i < m.scrolled + m.h - 2; i++) {
-        cursorto(m.x + 1, m.y + cl++);
-        if(m.selected == i)
+    m->nelements = m->nentries;
+    for(int i = m->scrolled; i < m->scrolled + m->h - 2 && i < m->nelements; i++) {
+        cursorto(m->x + 1, m->y + cl++);
+        if(m->selected == i)
             printf("\033[0;30;41m");
-        switch(m.entries[i].type) {
+        switch(m->entries[i].type) {
         case String:
-            sprintf(format, "%%-%d.%ds", pad, pad);
-            printf(format, m.entries[i].label);
-            menu_print(m.w - pad - 3, ((char*)m.entries[i].value), m.entries[i].length);
+            sprintf(format, "%%-%d.%ds\u2502", pad - 1, pad - 1);
+            printf(format, m->entries[i].label);
+            menu_print(m->w - pad - 3, ((char*)m->entries[i].value), m->entries[i].length);
             break;
         case Integer:
-            sprintf(format, "%%-%d.%ds %%%d.1d", pad, pad, m.w - pad - 3);
-            printf(format, m.entries[i].label, *((int*)m.entries[i].value));
+            sprintf(format, "%%-%d.%ds\u2502%%%d.1d", pad - 1, pad - 1, m->w - pad - 2);
+            printf(format, m->entries[i].label, *((int*)m->entries[i].value));
             break;
         case Boolean:
-            sprintf(format, "%%-%d.%ds%*s[%c]", pad, pad, m.w - pad - 5, "",\
-            *((int*)m.entries[i].value) ? '*' : ' ');
-            printf(format, m.entries[i].label);
+            sprintf(format, "%%-%d.%ds\u2502%*s[%c]", pad - 1, pad - 1, m->w - pad - 4, "",\
+            *((int*)m->entries[i].value) ? '*' : ' ');
+            printf(format, m->entries[i].label);
             break;
         case Float:
             break;
+        case ProcessStage:
+            if(!(*m->entries[i].count)) break;
+            printf("\033[0;30;0m");
+            draw_line(m->x, m->y + cl - 1, m->w, 0, 1);
+            cursorto(m->x + pad, m->y + cl - 1);
+            printf("\u2534");
+            m->nelements = m->nentries + *m->entries[i].count;
+            // TODO: this reallocates memory for the stages every redraw, really slow!!
+            struct Stage* new = realloc(((struct Stage*)m->entries[i].value), *m->entries[i].count);
+            if(new == NULL)
+                break;
+            m->entries[i].value = new;
+            for(int j = 0; j < *m->entries[i].count; j++) {
+                if(m->selected == i + j)
+                    printf("\033[0;30;41m");
+                cursorto(m->x + 1, m->y + cl++);
+                    printf("[%c] %d",
+                        (*((struct Stage*)m->entries[i].value)).type == Io ? '*' : ' ',
+                        (*((struct Stage*)m->entries[i].value)).t_length);
+                if(m->selected == i + j)
+                    printf("\033[0;30;0m");
+            }
+            cl++;
+            printf("\033[0;30;0m");
+            draw_line(m->x, m->y + cl - 1, m->w, 0, 1);
+            //cursorto(m->x + pad, m->y + cl - 1);
+            //printf("\u2534");
+            i += *m->entries[i].count;
+            break;
         }
-        if(m.selected == i)
+        if(m->selected == i)
             printf("\033[0;30;0m");
     }
 
-    draw_line(m.x + pad, m.y, m.h, 1, 1);
-
+    close:
     clear(0, term_h - 2, 1, term_w);
     cursorto(1, term_h);
     CMDDEF("C-C", "exit");
@@ -201,9 +262,13 @@ void menu_draw(Menu m){
 void menu_input(Menu* m){
     char key;
     while(1) {
-        menu_draw(*m);
+        menu_draw(m);
         switch(key = getchar()) {
 
+        case CTRLMASK(KEY_UP):
+            goto next;
+        case CTRLMASK(KEY_DOWN):
+            goto prev;
         case CTRLMASK('c'):
             clear(m->x, m->y, m->h, m->w);
             return;
@@ -212,9 +277,10 @@ void menu_input(Menu* m){
             getchar();
             switch(getchar()) {
             case 'A':
+                prev:
                 if(m->selected == 0) {
-                    m->selected = m->nentries - 1;
-                    m->scrolled = m->nentries + 2 - m->h;
+                    m->selected = m->nelements - 1;
+                    m->scrolled = m->nelements + 2 - m->h;
                 } else {
                     m->selected--;
                     if(m->selected < m->scrolled + 1 && m->scrolled > 0)
@@ -228,7 +294,7 @@ void menu_input(Menu* m){
 
         case '\t':
             next:
-            if(m->selected == m->nentries - 1) {
+            if(m->selected == m->nelements - 2) {
                 m->selected = 0;
                 m->scrolled = 0;
             } else {
@@ -263,16 +329,31 @@ void menu_input(Menu* m){
                 + m->entries[m->selected].length) = '\0';
                 break;
             case Integer:
-                if(key < '0' || key > '9') break;
-                (*((int*)m->entries[m->selected].value)) =\
-                (*((int*)m->entries[m->selected].value)) * 10 + key - 0x30;
-                break;
+                switch(key) {
+                case KEY_UP:
+                    (*((int*)m->entries[m->selected].value))--;
+                    break;
+                case KEY_DOWN:
+                    (*((int*)m->entries[m->selected].value))++;
+                    break;
+                default:
+                    if(key < '0' || key > '9') break;
+                    (*((int*)m->entries[m->selected].value)) =\
+                    (*((int*)m->entries[m->selected].value)) * 10 + key - 0x30;
+                    break;
+                }
             case Boolean:
                 if(key != ' ') break;
                 (*((int*)m->entries[m->selected].value)) =\
                 !(*((int*)m->entries[m->selected].value));
                 break;
             case Float:
+                break;
+            case ProcessStage:
+                //(*((struct Stage*)(m->entries + m->selected))).t_length = 10;
+                endwin();
+                exit(0);
+                //(*(((*(struct Stage*)(m->entries + m->selected).value))).type);
                 break;
             }
             break;

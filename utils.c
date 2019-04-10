@@ -16,6 +16,7 @@ void resize_handler(int sig){
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
     term_h = w.ws_row;
     term_w = w.ws_col;
+    system("clear");
     signal(SIGWINCH, resize_handler);
 }
 
